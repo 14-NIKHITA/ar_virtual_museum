@@ -1,70 +1,96 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>AR Virtual Museum</title>
+<meta charset="UTF-8">
+<title>AR Red Fort Museum</title>
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
 
-  <!-- MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.4/dist/mindar-image-aframe.prod.js"></script>
+<script src="https://unpkg.com/aframe-gesture-detector@4.0.3/dist/aframe-gesture-detector.min.js"></script>
+<script src="https://unpkg.com/aframe-gesture-handler@4.0.3/dist/aframe-gesture-handler.min.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-  </style>
+<style>
+body{
+margin:0;
+overflow:hidden;
+font-family:Arial;
+}
+
+button{
+position:fixed;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+padding:12px 20px;
+background:#e53935;
+color:white;
+border:none;
+border-radius:8px;
+font-size:16px;
+cursor:pointer;
+}
+</style>
+
 </head>
 
 <body>
 
-<a-scene
-  mindar-image="imageTargetSrc: ./assets/target.mind;"
-  color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false">
+<button onclick="playNarration()">Play Museum Guide</button>
 
-  <a-text
-value="Red Fort - Built in 1648 by Shah Jahan. A UNESCO World Heritage Site."
+<a-scene
+mindar-image="imageTargetSrc: ./assets/target.mind;"
+color-space="sRGB"
+renderer="colorManagement: true, physicallyCorrectLights"
+vr-mode-ui="enabled: false"
+device-orientation-permission-ui="enabled: false"
+gesture-detector
+>
+
+<a-assets>
+<a-asset-item id="redfort" src="./assets/red_fort.glb"></a-asset-item>
+</a-assets>
+
+<a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+
+<a-entity mindar-image-target="targetIndex: 0">
+
+<a-entity
+gltf-model="#redfort"
+position="0 0 0"
+scale="0.4 0.4 0.4"
+rotation="0 0 0"
+gesture-handler>
+</a-entity>
+
+<a-text
+value="Red Fort - Built in 1648 by Mughal Emperor Shah Jahan"
 position="0 0.5 0"
 align="center"
 color="yellow"
 width="2">
 </a-text>
 
-  <!-- Camera -->
-  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
- <a-entity
-gltf-model="./assets/red_fort.glb"
-scale="0.5 0.5 0.5"
-position="0 0 0"
-rotation="0 0 0"
-gesture-handler>
 </a-entity>
 
 </a-scene>
-<script src="https://unpkg.com/aframe-gesture-detector@4.0.3/dist/aframe-gesture-detector.min.js"></script>
-<script src="https://unpkg.com/aframe-gesture-handler@4.0.3/dist/aframe-gesture-handler.min.js"></script>
-<button onclick="playNarration()" 
-style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-padding:12px;background:red;color:white;border:none;border-radius:8px;">
-Play Guide
-</button>
+
 <script>
+
 function playNarration(){
 
-let text = "This is the Red Fort located in Delhi India. It was built by the Mughal emperor Shah Jahan in 1648 and served as the main residence of Mughal emperors for nearly two hundred years.";
+let text = "This is the Red Fort located in Delhi India. It was built in 1648 by the Mughal emperor Shah Jahan. The fort served as the residence of Mughal emperors for nearly two hundred years and is now a UNESCO World Heritage Site.";
 
 let speech = new SpeechSynthesisUtterance(text);
+
 speech.lang="en-US";
+speech.rate=0.9;
 
 window.speechSynthesis.speak(speech);
 
 }
+
 </script>
+
 </body>
 </html>
