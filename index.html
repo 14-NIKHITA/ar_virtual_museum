@@ -35,6 +35,14 @@ z-index:9999;
 
 <button id="guideButton">Play Museum Guide</button>
 
+<button id="dayBtn" style="position:fixed;top:20px;left:20px;z-index:9999;">Day Mode</button>
+
+<button id="nightBtn" style="position:fixed;top:20px;right:20px;z-index:9999;">Night Mode</button>
+
+<button id="voiceBtn" style="position:fixed;bottom:90px;right:20px;z-index:9999;">
+Ask Guide
+</button>
+
 <a-scene
 mindar-image="imageTargetSrc: ./assets/target.mind;"
 color-space="sRGB"
@@ -68,7 +76,8 @@ width="2">
 </a-text>
 
 </a-entity>
-
+<a-light id="mainLight" type="directional" intensity="1.5" position="0 4 2"></a-light>
+<a-light type="ambient" intensity="0.6"></a-light>
 </a-scene>
 
 <script>
@@ -105,6 +114,58 @@ speech.lang="en-US"
 speech.rate=0.9
 
 window.speechSynthesis.speak(speech)
+
+})
+
+const mainLight = document.querySelector("#mainLight")
+
+document.getElementById("dayBtn").addEventListener("click", function(){
+
+mainLight.setAttribute("intensity","1.5")
+document.body.style.background="white"
+
+})
+
+document.getElementById("nightBtn").addEventListener("click", function(){
+
+mainLight.setAttribute("intensity","0.2")
+document.body.style.background="black"
+
+})
+
+const voiceBtn = document.getElementById("voiceBtn")
+
+voiceBtn.addEventListener("click", function(){
+
+const recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)()
+
+recognition.lang = "en-US"
+
+recognition.start()
+
+recognition.onresult = function(event){
+
+let question = event.results[0][0].transcript.toLowerCase()
+
+let answer = "Sorry I don't know that yet."
+
+if(question.includes("who built")){
+answer="The Red Fort was built by the Mughal emperor Shah Jahan in 1648."
+}
+
+else if(question.includes("when")){
+answer="The Red Fort was constructed in the year 1648."
+}
+
+else if(question.includes("why famous")){
+answer="The Red Fort is famous as the main residence of Mughal emperors and a UNESCO world heritage site."
+}
+
+let speech = new SpeechSynthesisUtterance(answer)
+
+window.speechSynthesis.speak(speech)
+
+}
 
 })
 
