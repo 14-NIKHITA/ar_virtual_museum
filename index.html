@@ -8,48 +8,94 @@
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
+
 body{
 margin:0;
 overflow:hidden;
 font-family:Arial;
 }
 
-#guideButton{
+/* Chat container */
+#chatbox{
 position:fixed;
-bottom:25px;
-left:50%;
-transform:translateX(-50%);
-padding:14px 22px;
-background:#d32f2f;
-color:white;
-border:none;
+right:10px;
+bottom:10px;
+width:260px;
+height:320px;
+background:white;
 border-radius:10px;
-font-size:16px;
+box-shadow:0 0 10px rgba(0,0,0,0.3);
+display:flex;
+flex-direction:column;
 z-index:9999;
 }
+
+/* messages area */
+#messages{
+flex:1;
+padding:10px;
+overflow-y:auto;
+font-size:14px;
+}
+
+/* input area */
+#inputArea{
+display:flex;
+border-top:1px solid #ddd;
+}
+
+#userInput{
+flex:1;
+border:none;
+padding:8px;
+outline:none;
+}
+
+#sendBtn{
+background:#e53935;
+color:white;
+border:none;
+padding:8px 12px;
+}
+
+.msgUser{
+text-align:right;
+margin:5px 0;
+}
+
+.msgBot{
+text-align:left;
+margin:5px 0;
+color:#0d47a1;
+}
+
 </style>
 
 </head>
 
 <body>
 
-<button id="guideButton">Play Museum Guide</button>
+<!-- CHAT UI -->
 
-<button id="dayBtn" style="position:fixed;top:20px;left:20px;z-index:9999;">Day Mode</button>
+<div id="chatbox">
 
-<button id="nightBtn" style="position:fixed;top:20px;right:20px;z-index:9999;">Night Mode</button>
+<div id="messages"></div>
 
-<button id="voiceBtn" style="position:fixed;bottom:90px;right:20px;z-index:9999;">
-Ask Guide
-</button>
+<div id="inputArea">
+<input id="userInput" placeholder="Ask about Red Fort">
+<button id="sendBtn">Send</button>
+</div>
+
+</div>
+
+<!-- AR SCENE -->
 
 <a-scene
 mindar-image="imageTargetSrc: ./assets/target.mind;"
 color-space="sRGB"
-renderer="colorManagement: true, physicallyCorrectLights"
-vr-mode-ui="enabled: false"
-device-orientation-permission-ui="enabled: false"
->
+renderer="colorManagement:true"
+vr-mode-ui="enabled:false"
+device-orientation-permission-ui="enabled:false">
 
 <a-assets>
 <a-asset-item id="redfort" src="./assets/red_fort.glb"></a-asset-item>
@@ -57,18 +103,18 @@ device-orientation-permission-ui="enabled: false"
 
 <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
-<a-entity mindar-image-target="targetIndex: 0">
+<a-entity mindar-image-target="targetIndex:0">
 
 <a-entity
 id="model"
 gltf-model="#redfort"
-position="0 0 0"
 scale="0.4 0.4 0.4"
+position="0 0 0"
 rotation="0 0 0">
 </a-entity>
 
 <a-text
-value="Red Fort - Built in 1648 by Mughal Emperor Shah Jahan"
+value="Red Fort - Mughal Monument"
 position="0 0.6 0"
 align="center"
 color="yellow"
@@ -76,98 +122,112 @@ width="2">
 </a-text>
 
 </a-entity>
-<a-light id="mainLight" type="directional" intensity="1.5" position="0 4 2"></a-light>
-<a-light type="ambient" intensity="0.6"></a-light>
+
 </a-scene>
 
 <script>
 
-const model = document.querySelector("#model")
+/* ROTATE MODEL */
+
+const model=document.querySelector("#model")
 
 let startX
-let rotationY = 0
+let rotationY=0
 
-document.addEventListener("touchstart", function(e){
-startX = e.touches[0].clientX
+document.addEventListener("touchstart",e=>{
+startX=e.touches[0].clientX
 })
 
-document.addEventListener("touchmove", function(e){
+document.addEventListener("touchmove",e=>{
 
-let moveX = e.touches[0].clientX
-let diff = moveX - startX
+let moveX=e.touches[0].clientX
+let diff=moveX-startX
 
-rotationY += diff * 0.2
+rotationY+=diff*0.2
 
 model.setAttribute("rotation","0 "+rotationY+" 0")
 
-startX = moveX
+startX=moveX
 
 })
 
-document.getElementById("guideButton").addEventListener("click",function(){
+/* CHATBOT */
 
-let text = "This is the Red Fort located in Delhi India. It was built in 1648 by the Mughal emperor Shah Jahan. The fort served as the residence of Mughal emperors for nearly two hundred years and is now a UNESCO World Heritage Site."
+const sendBtn=document.getElementById("sendBtn")
+const userInput=document.getElementById("userInput")
+const messages=document.getElementById("messages")
 
-let speech = new SpeechSynthesisUtterance(text)
+sendBtn.onclick=sendMessage
+
+function sendMessage(){
+
+let text=userInput.value.trim()
+
+if(text==="") return
+
+addMessage(text,"user")
+
+let reply=botReply(text.toLowerCase())
+
+setTimeout(()=>{
+addMessage(reply,"bot")
+speak(reply)
+},500)
+
+userInput.value=""
+
+}
+
+/* ADD MESSAGE TO CHAT */
+
+function addMessage(text,type){
+
+let div=document.createElement("div")
+
+div.className= type==="user" ? "msgUser" : "msgBot"
+
+div.innerText=text
+
+messages.appendChild(div)
+
+messages.scrollTop=messages.scrollHeight
+
+}
+
+/* SIMPLE NLP */
+
+function botReply(q){
+
+if(q.includes("who built"))
+return "The Red Fort was built by the Mughal emperor Shah Jahan."
+
+if(q.includes("when built") || q.includes("year"))
+return "The Red Fort was constructed in the year 1648."
+
+if(q.includes("where"))
+return "The Red Fort is located in Delhi India."
+
+if(q.includes("why famous"))
+return "The Red Fort is famous as the residence of Mughal emperors and is a UNESCO World Heritage Site."
+
+if(q.includes("history"))
+return "The Red Fort served as the main residence of Mughal emperors for nearly two hundred years."
+
+return "I am the virtual museum guide. Ask me about the Red Fort history."
+
+}
+
+/* SPEECH OUTPUT */
+
+function speak(text){
+
+let speech=new SpeechSynthesisUtterance(text)
 
 speech.lang="en-US"
-speech.rate=0.9
-
-window.speechSynthesis.speak(speech)
-
-})
-
-const mainLight = document.querySelector("#mainLight")
-
-document.getElementById("dayBtn").addEventListener("click", function(){
-
-mainLight.setAttribute("intensity","1.5")
-document.body.style.background="white"
-
-})
-
-document.getElementById("nightBtn").addEventListener("click", function(){
-
-mainLight.setAttribute("intensity","0.2")
-document.body.style.background="black"
-
-})
-
-const voiceBtn = document.getElementById("voiceBtn")
-
-voiceBtn.addEventListener("click", function(){
-
-const recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)()
-
-recognition.lang = "en-US"
-
-recognition.start()
-
-recognition.onresult = function(event){
-
-let question = event.results[0][0].transcript.toLowerCase()
-
-let answer = "Sorry I don't know that yet."
-
-if(question.includes("who built")){
-answer="The Red Fort was built by the Mughal emperor Shah Jahan in 1648."
-}
-
-else if(question.includes("when")){
-answer="The Red Fort was constructed in the year 1648."
-}
-
-else if(question.includes("why famous")){
-answer="The Red Fort is famous as the main residence of Mughal emperors and a UNESCO world heritage site."
-}
-
-let speech = new SpeechSynthesisUtterance(answer)
 
 window.speechSynthesis.speak(speech)
 
 }
-
-})
 
 </script>
 
