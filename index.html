@@ -1,235 +1,914 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>AR Red Fort Museum</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR Heritage Museum</title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Raleway:wght@300;400;600&display=swap');
 
-body{
-margin:0;
-overflow:hidden;
-font-family:Arial;
-}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* Chat container */
-#chatbox{
-position:fixed;
-right:10px;
-bottom:10px;
-width:260px;
-height:320px;
-background:white;
-border-radius:10px;
-box-shadow:0 0 10px rgba(0,0,0,0.3);
-display:flex;
-flex-direction:column;
-z-index:9999;
-}
+  body {
+    overflow: hidden;
+    font-family: 'Raleway', sans-serif;
+    background: #000;
+  }
 
-/* messages area */
-#messages{
-flex:1;
-padding:10px;
-overflow-y:auto;
-font-size:14px;
-}
+  /* ── SPLASH SCREEN ── */
+  #splash {
+    position: fixed; inset: 0;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a0a00 50%, #0a0a0a 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 99999;
+    transition: opacity 0.8s ease;
+  }
+  #splash.hidden { opacity: 0; pointer-events: none; }
 
-/* input area */
-#inputArea{
-display:flex;
-border-top:1px solid #ddd;
-}
+  .splash-logo {
+    font-family: 'Cinzel', serif;
+    font-size: 2.2rem;
+    color: #c9933a;
+    letter-spacing: 4px;
+    text-align: center;
+    margin-bottom: 8px;
+    text-shadow: 0 0 30px rgba(201,147,58,0.5);
+  }
+  .splash-sub {
+    color: #888;
+    font-size: 0.75rem;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+  .splash-scan-icon {
+    width: 80px; height: 80px;
+    border: 2px solid #c9933a;
+    border-radius: 12px;
+    position: relative;
+    margin-bottom: 32px;
+    animation: pulse 2s infinite;
+  }
+  .splash-scan-icon::before, .splash-scan-icon::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+  }
+  .splash-scan-icon::before {
+    top: -3px; left: -3px;
+    border-top: 3px solid #fff;
+    border-left: 3px solid #fff;
+    border-radius: 4px 0 0 0;
+  }
+  .splash-scan-icon::after {
+    bottom: -3px; right: -3px;
+    border-bottom: 3px solid #fff;
+    border-right: 3px solid #fff;
+    border-radius: 0 0 4px 0;
+  }
+  .scan-line {
+    position: absolute;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, #c9933a, transparent);
+    top: 0;
+    animation: scanline 2s linear infinite;
+  }
+  @keyframes scanline {
+    0% { top: 0; opacity: 1; }
+    100% { top: 100%; opacity: 0.3; }
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,147,58,0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(201,147,58,0); }
+  }
 
-#userInput{
-flex:1;
-border:none;
-padding:8px;
-outline:none;
-}
+  .splash-hint {
+    color: #666;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .start-btn {
+    margin-top: 32px;
+    padding: 14px 40px;
+    background: transparent;
+    border: 1px solid #c9933a;
+    color: #c9933a;
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 2px;
+  }
+  .start-btn:hover {
+    background: #c9933a;
+    color: #000;
+  }
 
-#sendBtn{
-background:#e53935;
-color:white;
-border:none;
-padding:8px 12px;
-}
+  /* ── HIDE ALL MINDAR DEFAULT UI ── */
+  .mindar-ui-overlay,
+  .mindar-ui-scanning,
+  .mindar-ui-target,
+  [class*="mindar-ui"],
+  [id*="mindar-ui"] {
+    display: none !important;
+  }
 
-.msgUser{
-text-align:right;
-margin:5px 0;
-}
+  /* ── TOP BAR ── */
+  #topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 9998;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  .topbar-title {
+    font-family: 'Cinzel', serif;
+    color: #c9933a;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+  .topbar-status {
+    font-size: 0.7rem;
+    color: #aaa;
+    letter-spacing: 2px;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .topbar-status.found {
+    color: #4caf50;
+    border-color: rgba(76,175,80,0.3);
+  }
 
-.msgBot{
-text-align:left;
-margin:5px 0;
-color:#0d47a1;
-}
+  /* ── SCAN FRAME (corners) ── */
+  #scanframe {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 240px; height: 240px;
+    z-index: 9990;
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+  #scanframe.hidden { opacity: 0; }
+  .corner {
+    position: absolute;
+    width: 24px; height: 24px;
+  }
+  .corner.tl { top: 0; left: 0; border-top: 2px solid #c9933a; border-left: 2px solid #c9933a; }
+  .corner.tr { top: 0; right: 0; border-top: 2px solid #c9933a; border-right: 2px solid #c9933a; }
+  .corner.bl { bottom: 0; left: 0; border-bottom: 2px solid #c9933a; border-left: 2px solid #c9933a; }
+  .corner.br { bottom: 0; right: 0; border-bottom: 2px solid #c9933a; border-right: 2px solid #c9933a; }
+  #scanframe .scan-line {
+    position: absolute;
+    width: 100%; height: 1px;
+    background: linear-gradient(90deg, transparent, #c9933a88, #c9933a, #c9933a88, transparent);
+    top: 0;
+    animation: scanline 2.5s ease-in-out infinite;
+  }
+  #scantext {
+    position: fixed;
+    top: calc(50% + 130px); left: 50%;
+    transform: translateX(-50%);
+    color: #888;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    z-index: 9990;
+    pointer-events: none;
+    transition: opacity 0.5s;
+    white-space: nowrap;
+  }
+  #scantext.hidden { opacity: 0; }
 
+  /* ── CONTROLS PANEL ── */
+  #controls {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    z-index: 9995;
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none;
+  }
+  #controls.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .ctrl-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 1px solid rgba(201,147,58,0.5);
+    background: rgba(0,0,0,0.7);
+    color: #c9933a;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  .ctrl-btn:active {
+    background: rgba(201,147,58,0.2);
+    transform: scale(0.95);
+  }
+
+  /* ── INFO PANEL ── */
+  #infopanel {
+    position: fixed;
+    left: 12px; bottom: 90px;
+    width: 220px;
+    background: rgba(0,0,0,0.75);
+    border: 1px solid rgba(201,147,58,0.25);
+    border-radius: 10px;
+    padding: 14px;
+    z-index: 9995;
+    backdrop-filter: blur(12px);
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.4s ease;
+    pointer-events: none;
+  }
+  #infopanel.visible {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+  .info-monument {
+    font-family: 'Cinzel', serif;
+    color: #c9933a;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+  .info-tagline {
+    color: #888;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 10px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .info-label { color: #666; font-size: 0.7rem; }
+  .info-value { color: #ddd; font-size: 0.7rem; font-weight: 600; }
+
+  /* ── CHAT ── */
+  #chatToggle {
+    position: fixed;
+    right: 16px; bottom: 24px;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: #c9933a;
+    border: none;
+    color: #000;
+    font-size: 1.4rem;
+    cursor: pointer;
+    z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(201,147,58,0.4);
+    transition: transform 0.2s;
+  }
+  #chatToggle:active { transform: scale(0.95); }
+
+  #chatbox {
+    position: fixed;
+    right: 12px; bottom: 86px;
+    width: 270px;
+    background: rgba(10,10,10,0.95);
+    border: 1px solid rgba(201,147,58,0.2);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    z-index: 9999;
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none;
+    max-height: 360px;
+  }
+  #chatbox.open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+  .chat-header {
+    padding: 12px 16px;
+    background: rgba(201,147,58,0.1);
+    border-bottom: 1px solid rgba(201,147,58,0.15);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chat-dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .chat-title { font-family: 'Cinzel', serif; color: #c9933a; font-size: 0.8rem; letter-spacing: 1px; }
+  #messages {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    font-size: 0.78rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 160px;
+    max-height: 240px;
+  }
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-thumb { background: rgba(201,147,58,0.3); border-radius: 4px; }
+  .msgUser {
+    align-self: flex-end;
+    background: rgba(201,147,58,0.15);
+    border: 1px solid rgba(201,147,58,0.3);
+    border-radius: 12px 12px 2px 12px;
+    padding: 6px 10px;
+    color: #e8c97a;
+    max-width: 80%;
+  }
+  .msgBot {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px 12px 12px 2px;
+    padding: 6px 10px;
+    color: #bbb;
+    max-width: 85%;
+  }
+  #inputArea {
+    display: flex;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 8px;
+    gap: 6px;
+  }
+  #userInput {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 7px 12px;
+    color: #fff;
+    font-size: 0.75rem;
+    outline: none;
+    font-family: 'Raleway', sans-serif;
+  }
+  #userInput::placeholder { color: #555; }
+  #sendBtn {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: #c9933a;
+    border: none;
+    color: #000;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    top: 70px; left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    background: rgba(0,0,0,0.85);
+    color: #c9933a;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(201,147,58,0.3);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 </style>
-
 </head>
-
 <body>
 
-<!-- CHAT UI -->
-
-<div id="chatbox">
-
-<div id="messages"></div>
-
-<div id="inputArea">
-<input id="userInput" placeholder="Ask about Red Fort">
-<button id="sendBtn">Send</button>
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">AR MUSEUM</div>
+  <div class="splash-sub">Moon · Egypt · India · History</div>
+  <div class="splash-scan-icon"><div class="scan-line"></div></div>
+  <div class="splash-hint">Camera loads in background — tap to begin</div>
+  <button class="start-btn" id="startBtn">BEGIN EXPERIENCE</button>
 </div>
 
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="topbar-title">AR MUSEUM</div>
+  <div class="topbar-status" id="statusBadge">SCANNING</div>
+</div>
+
+<!-- SCAN FRAME -->
+<div id="scanframe">
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+  <div class="scan-line"></div>
+</div>
+<div id="scantext">POINT AT IMAGE CARD</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- INFO PANEL -->
+<div id="infopanel">
+  <div class="info-monument" id="infoName">Red Fort</div>
+  <div class="info-tagline" id="infoTagline">Mughal Monument · Delhi</div>
+  <div class="info-row"><span class="info-label">Built</span><span class="info-value" id="infoBuilt">1648 AD</span></div>
+  <div class="info-row"><span class="info-label">By</span><span class="info-value" id="infoBy">Shah Jahan</span></div>
+  <div class="info-row"><span class="info-label">Status</span><span class="info-value">UNESCO Site</span></div>
+</div>
+
+<!-- CONTROLS -->
+<div id="controls">
+  <button class="ctrl-btn" id="zoomOut" title="Zoom Out">−</button>
+  <button class="ctrl-btn" id="resetBtn" title="Reset">↺</button>
+  <button class="ctrl-btn" id="zoomIn" title="Zoom In">＋</button>
+</div>
+
+<!-- CHAT TOGGLE -->
+<button id="chatToggle">💬</button>
+
+<!-- CHATBOX -->
+<div id="chatbox">
+  <div class="chat-header">
+    <div class="chat-dot"></div>
+    <div class="chat-title">MUSEUM GUIDE</div>
+  </div>
+  <div id="messages">
+    <div class="msgBot">Namaste! 🏛️ I'm your AR Museum guide. Ask me anything about the monument you're viewing!</div>
+  </div>
+  <div id="inputArea">
+    <input id="userInput" placeholder="Ask about this monument…">
+    <button id="sendBtn">➤</button>
+  </div>
 </div>
 
 <!-- AR SCENE -->
-
 <a-scene
-mindar-image="imageTargetSrc: ./assets/target.mind;"
-color-space="sRGB"
-renderer="colorManagement:true"
-vr-mode-ui="enabled:false"
-device-orientation-permission-ui="enabled:false">
+  id="arScene"
+  mindar-image="imageTargetSrc: ./assets/targets.mind;"
+  color-space="sRGB"
+  renderer="colorManagement:true"
+  vr-mode-ui="enabled:false"
+  device-orientation-permission-ui="enabled:false">
 
-<a-assets>
-<a-asset-item id="redfort" src="./assets/red_fort.glb"></a-asset-item>
-</a-assets>
+  <a-assets>
+    <a-asset-item id="apollo"      src="./assets/apollo_moon_landing.glb"></a-asset-item>
+    <a-asset-item id="prison"      src="./assets/prison.glb"></a-asset-item>
+    <a-asset-item id="redfort"     src="./assets/red_fort.glb"></a-asset-item>
+    <a-asset-item id="sarcophagus" src="./assets/sarcophagus.glb"></a-asset-item>
+  </a-assets>
 
-<a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+  <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
-<a-entity mindar-image-target="targetIndex:0">
+  <!-- INDEX 0: Apollo moon landing photo → Apollo model -->
+  <a-entity mindar-image-target="targetIndex:0" id="target0">
+    <a-entity id="model0" gltf-model="#apollo"
+      scale="0.021 0.021 0.021"
+      position="0 0 0" rotation="0 0 0"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 25000; easing: linear">
+    </a-entity>
+  </a-entity>
 
-<a-entity
-id="model"
-gltf-model="#redfort"
-scale="0.4 0.4 0.4"
-position="0 0 0"
-rotation="0 0 0">
-</a-entity>
+  <!-- INDEX 1: Full moon photo → Apollo model (same!) -->
+  <a-entity mindar-image-target="targetIndex:1" id="target1">
+    <a-entity id="model1" gltf-model="#apollo"
+      scale="0.021 0.021 0.021"
+      position="0 0 0" rotation="0 0 0"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 25000; easing: linear">
+    </a-entity>
+  </a-entity>
 
-<a-text
-value="Red Fort - Mughal Monument"
-position="0 0.6 0"
-align="center"
-color="yellow"
-width="2">
-</a-text>
+  <!-- INDEX 2: Prison bars photo → Prison model -->
+  <a-entity mindar-image-target="targetIndex:2" id="target2">
+    <a-entity id="model2" gltf-model="#prison"
+      scale="0.4 0.4 0.4"
+      position="0 0 0" rotation="0 0 0"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+    </a-entity>
+  </a-entity>
 
-</a-entity>
+  <!-- INDEX 3: Prison closeup → Prison model (same!) -->
+  <a-entity mindar-image-target="targetIndex:3" id="target3">
+    <a-entity id="model3" gltf-model="#prison"
+      scale="0.4 0.4 0.4"
+      position="0 0 0" rotation="0 0 0"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+    </a-entity>
+  </a-entity>
+
+  <!-- INDEX 4: Red Fort photo → Red Fort model -->
+  <a-entity mindar-image-target="targetIndex:4" id="target4">
+    <a-entity id="model4" gltf-model="#redfort"
+      scale="0.4 0.4 0.4"
+      position="0 0 0" rotation="0 0 0"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+    </a-entity>
+  </a-entity>
+
+  <!-- INDEX 5: Gold sarcophagus photo → Sarcophagus model -->
+  <a-entity mindar-image-target="targetIndex:5" id="target5">
+    <a-entity id="model5" gltf-model="#sarcophagus"
+      scale="0.4 0.4 0.4"
+      position="0 0 0" rotation="0 0 0"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+    </a-entity>
+  </a-entity>
+
+  <!-- INDEX 6: Painted sarcophagus photo → Sarcophagus model (same!) -->
+  <a-entity mindar-image-target="targetIndex:6" id="target6">
+    <a-entity id="model6" gltf-model="#sarcophagus"
+      scale="0.4 0.4 0.4"
+      position="0 0 0" rotation="0 0 0"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+    </a-entity>
+  </a-entity>
 
 </a-scene>
 
 <script>
+// ── MONUMENT DATABASE ──
+// Multiple indexes can map to the same monument data
+const MONUMENTS = {
 
-/* ROTATE MODEL */
+  // ── APOLLO MOON LANDING (indexes 0 & 1) ──
+  0: {
+    name: "Apollo 11",
+    tagline: "Moon Landing · 1969",
+    built: "July 20, 1969",
+    by: "NASA",
+    defaultScale: 0.021,
+    qa: {
+      "who": "Apollo 11 was a NASA mission crewed by Neil Armstrong, Buzz Aldrin, and Michael Collins.",
+      "neil armstrong": "Neil Armstrong was the mission commander and became the first human to walk on the Moon.",
+      "buzz aldrin": "Buzz Aldrin was the lunar module pilot and the second human to walk on the Moon.",
+      "michael collins": "Michael Collins piloted the Command Module Columbia and orbited the Moon while Armstrong and Aldrin landed.",
+      "when": "Apollo 11 launched on July 16, 1969 and landed on the Moon on July 20, 1969.",
+      "year": "The Moon landing took place on July 20, 1969.",
+      "where": "The astronauts landed in the Sea of Tranquility on the Moon's surface.",
+      "how long": "Armstrong and Aldrin spent about 21.5 hours on the lunar surface.",
+      "rocket": "The mission used the Saturn V rocket, the most powerful rocket ever built, standing 111 metres tall.",
+      "saturn": "The Saturn V rocket produced 7.6 million pounds of thrust at liftoff — still the most powerful rocket ever flown.",
+      "first words": "Neil Armstrong's famous words upon landing were: the Eagle has landed.",
+      "quote": "Armstrong said 'one small step for man, one giant leap for mankind' upon stepping onto the Moon.",
+      "flag": "The astronauts planted an American flag on the lunar surface during their moonwalk.",
+      "cost": "The Apollo program cost approximately $25.4 billion — equivalent to over $150 billion today.",
+      "duration": "The entire mission lasted 8 days, 3 hours, 18 minutes and 35 seconds.",
+      "return": "The crew splashed down in the Pacific Ocean on July 24, 1969.",
+      "sample": "The astronauts collected 21.55 kilograms of lunar rock and soil samples.",
+      "why important": "Apollo 11 was the first crewed mission to land on the Moon, fulfilling President Kennedy's 1961 goal.",
+      "kennedy": "President John F. Kennedy challenged NASA in 1961 to land a man on the Moon before the end of the decade.",
+      "cold war": "The Moon landing was a pivotal victory for the US in the Space Race against the Soviet Union.",
+      "eagle": "The lunar module was named Eagle — the origin of the phrase 'the Eagle has landed'.",
+      "history": "Apollo 11 represents humanity's greatest technological achievement — landing humans on another world for the first time.",
+      "about": "Apollo 11 was NASA's historic 1969 mission that landed the first humans on the Moon. Astronauts Armstrong and Aldrin walked the lunar surface while Collins orbited above.",
+    }
+  },
+  1: null, // handled below via alias
 
-const model=document.querySelector("#model")
+  // ── PRISON (indexes 2 & 3) ──
+  2: {
+    name: "Alcatraz Prison",
+    tagline: "Federal Penitentiary · 1934–1963",
+    built: "1934",
+    by: "US Federal Bureau of Prisons",
+    defaultScale: 0.4,
+    qa: {
+      "who built": "Alcatraz Federal Penitentiary was established by the US Federal Bureau of Prisons in 1934.",
+      "when": "Alcatraz operated as a federal prison from 1934 to 1963.",
+      "year": "Alcatraz opened as a federal penitentiary in 1934 and closed in 1963.",
+      "where": "Alcatraz Island is located in San Francisco Bay, California, USA.",
+      "why famous": "Alcatraz is famous for housing America's most dangerous criminals and for its supposedly inescapable location surrounded by cold, shark-infested waters.",
+      "escape": "There were 14 known escape attempts involving 36 prisoners. None were ever confirmed successful.",
+      "famous prisoners": "Famous inmates included Al Capone, George 'Machine Gun' Kelly, and Robert Stroud, the Birdman of Alcatraz.",
+      "al capone": "Al Capone, the notorious Chicago gangster, was imprisoned at Alcatraz from 1934 to 1939.",
+      "capacity": "Alcatraz held a maximum of around 336 inmates and employed roughly 300 staff.",
+      "why closed": "Alcatraz closed in 1963 because it was too expensive to operate — it cost three times more per prisoner than other federal prisons.",
+      "island": "The island is 22 acres and sits 1.25 miles off the coast of San Francisco.",
+      "cold war": "During World War II, Alcatraz also served as a military prison before its conversion to a federal penitentiary.",
+      "today": "Today Alcatraz is a popular tourist attraction and national park, receiving over 1.4 million visitors per year.",
+      "history": "Alcatraz Island has served as a military fort, military prison, and finally a federal penitentiary. It is now a National Historic Landmark.",
+      "rules": "Inmates were given food, clothing, shelter, and medical care — but had to earn privileges like family visits and access to books.",
+      "cells": "Each cell measured just 5 by 9 feet — barely enough room for a cot, small desk, and toilet.",
+      "about": "Alcatraz was a maximum-security federal prison on an island in San Francisco Bay, housing America's most dangerous criminals from 1934 to 1963.",
+      "water": "The waters around Alcatraz reach 50–54°F and have strong currents, making escape nearly impossible.",
+    }
+  },
+  3: null, // handled below via alias
 
-let startX
-let rotationY=0
+  // ── RED FORT (index 4) ──
+  4: {
+    name: "Red Fort",
+    tagline: "Mughal Monument · Delhi",
+    built: "1648 AD",
+    by: "Shah Jahan",
+    defaultScale: 0.4,
+    qa: {
+      "who built": "The Red Fort was built by the Mughal emperor Shah Jahan.",
+      "when built": "The Red Fort was constructed between 1638 and 1648 AD.",
+      "year": "Construction was completed in 1648 AD after 10 years of work.",
+      "where": "The Red Fort is located in Old Delhi, India, on the banks of the Yamuna river.",
+      "why famous": "It is famous as the main residence of Mughal emperors for nearly 200 years and is a UNESCO World Heritage Site.",
+      "material": "It is built primarily from red sandstone, which gives it its name — Lal Qila means Red Fort in Hindi.",
+      "size": "The fort covers about 254 acres with massive walls stretching over 2 kilometres.",
+      "name": "Lal Qila means Red Fort in Hindi — named for its imposing red sandstone walls.",
+      "history": "The Red Fort served as the ceremonial and political centre of Mughal power for nearly 200 years, from 1648 until 1857.",
+      "independence": "Every year on India's Independence Day, August 15th, the Prime Minister hoists the national flag at the Red Fort.",
+      "1857": "After the 1857 uprising, the British took control of the fort and used it as a military garrison.",
+      "unesco": "The Red Fort was declared a UNESCO World Heritage Site in 2007.",
+      "shah jahan": "Shah Jahan, the builder of the Red Fort, also built the Taj Mahal as a tribute to his wife Mumtaz Mahal.",
+      "mughal": "The Mughal empire was one of the largest empires in the world, ruling most of the Indian subcontinent.",
+      "gates": "The fort has two main gates — the Lahori Gate, which is the main entrance, and the Delhi Gate.",
+      "inside": "Inside the fort are palaces, audience halls, a mosque, and beautiful gardens with water channels.",
+      "diwan": "The Diwan-i-Aam was the hall of public audience where the emperor met common people.",
+      "open": "The Red Fort is open to visitors Tuesday through Sunday, and is closed on Mondays.",
+      "about": "The Red Fort is a 17th century Mughal fortress in Delhi built by Emperor Shah Jahan. It served as the imperial residence for nearly 200 years and is now a UNESCO World Heritage Site.",
+    }
+  },
 
-document.addEventListener("touchstart",e=>{
-startX=e.touches[0].clientX
-})
+  // ── SARCOPHAGUS (indexes 5 & 6) ──
+  5: {
+    name: "Egyptian Sarcophagus",
+    tagline: "Ancient Egypt · ~1323 BC",
+    built: "~1323 BC",
+    by: "Ancient Egyptian craftsmen",
+    defaultScale: 0.4,
+    qa: {
+      "what is": "A sarcophagus is an ancient Egyptian coffin, typically made of stone, gold, or wood, used to hold a mummy.",
+      "who": "Sarcophagi were made by highly skilled craftsmen and artists in ancient Egypt.",
+      "tutankhamun": "The most famous sarcophagus belongs to Tutankhamun, the boy pharaoh who died around 1323 BC at approximately 18 years old.",
+      "king tut": "King Tutankhamun's innermost coffin was made of solid gold and weighed about 110 kilograms.",
+      "when": "Egyptian sarcophagi were used from around 2686 BC during the Old Kingdom period through the Roman era.",
+      "year": "The practice of using sarcophagi in Egypt spans over 3,000 years of history.",
+      "why": "Egyptians believed in preserving the body for the afterlife. The sarcophagus protected the mummy and helped the soul find its body again.",
+      "afterlife": "Ancient Egyptians believed in a complex afterlife — the soul had to pass judgment by the god Osiris before entering paradise.",
+      "mummy": "A mummy is a preserved human body. Egyptians removed internal organs, dried the body with salts, and wrapped it in linen bandages.",
+      "material": "Sarcophagi were made from limestone, granite, basalt, gold, or painted wood — depending on the wealth of the deceased.",
+      "hieroglyphs": "The hieroglyphs and paintings on sarcophagi contained spells, prayers, and the deceased's name to protect them in the afterlife.",
+      "layers": "Royal sarcophagi often had multiple layers — an outermost stone case, inner wooden cases, and the innermost coffin closest to the mummy.",
+      "canopic": "Beside the sarcophagus, Egyptians placed canopic jars to store the preserved internal organs of the mummy.",
+      "howard carter": "Tutankhamun's tomb and sarcophagus were discovered by archaeologist Howard Carter in 1922 in the Valley of the Kings.",
+      "valley of kings": "The Valley of the Kings in Luxor, Egypt is where most royal sarcophagi were discovered, containing 63 known tombs.",
+      "curse": "The so-called Curse of the Pharaoh supposedly brought misfortune to those who disturbed royal tombs — though this is largely a myth.",
+      "museum": "The golden sarcophagus of Tutankhamun is displayed at the Egyptian Museum in Cairo, Egypt.",
+      "history": "Sarcophagi are one of ancient Egypt's most iconic artefacts, representing a 3,000-year civilisation's deep belief in death, preservation, and the afterlife.",
+      "about": "An Egyptian sarcophagus is an ornately decorated coffin used to protect royal mummies in the afterlife. The most famous belongs to the boy pharaoh Tutankhamun, discovered in 1922.",
+      "pyramids": "Pyramids were massive tombs built for pharaohs. The Great Pyramid of Giza, built for Pharaoh Khufu, is the oldest of the Seven Wonders of the World.",
+      "gods": "Ancient Egyptians worshipped over 2,000 gods. Osiris was the god of the afterlife, Ra was the sun god, and Anubis was the god of mummification.",
+    }
+  },
+  6: null, // handled below via alias
 
-document.addEventListener("touchmove",e=>{
+};
 
-let moveX=e.touches[0].clientX
-let diff=moveX-startX
+// Aliases — indexes pointing to same data as another
+MONUMENTS[1] = MONUMENTS[0]; // Full moon → Apollo
+MONUMENTS[3] = MONUMENTS[2]; // Prison bars closeup → Alcatraz
+MONUMENTS[6] = MONUMENTS[5]; // Painted sarcophagus → same sarcophagus data
 
-rotationY+=diff*0.2
+// ── STATE ──
+let activeTarget = -1;
+let currentScale = 0.4;
+let currentRotationY = 0;
+let isTracking = false;
+let touchStartX = 0;
+let touchStartY = 0;
+let pinchStartDist = 0;
+let pinchStartScale = 0;
 
-model.setAttribute("rotation","0 "+rotationY+" 0")
+// ── DOM REFS ──
+const splash      = document.getElementById('splash');
+const startBtn    = document.getElementById('startBtn');
+const arScene     = document.getElementById('arScene');
+const scanframe   = document.getElementById('scanframe');
+const scantext    = document.getElementById('scantext');
+const statusBadge = document.getElementById('statusBadge');
+const infopanel   = document.getElementById('infopanel');
+const controls    = document.getElementById('controls');
+const chatToggle  = document.getElementById('chatToggle');
+const chatbox     = document.getElementById('chatbox');
+const messages    = document.getElementById('messages');
+const userInput   = document.getElementById('userInput');
+const sendBtn     = document.getElementById('sendBtn');
+const toast       = document.getElementById('toast');
 
-startX=moveX
+// ── SPLASH → START ──
+// AR scene loads in background behind splash
+startBtn.addEventListener('click', () => {
+  splash.classList.add('hidden');
+  setTimeout(() => { splash.style.display = 'none'; }, 800);
+});
 
-})
+// ── MINDAR EVENTS ──
+document.querySelectorAll('[mindar-image-target]').forEach(el => {
+  const idx = parseInt(el.getAttribute('mindar-image-target').split(':')[1]);
 
-/* CHATBOT */
+  el.addEventListener('targetFound', () => {
+    activeTarget = idx;
+    isTracking = true;
+    currentScale = MONUMENTS[idx]?.defaultScale ?? 0.4;
+    currentRotationY = 0;
+    updateModelTransform();
+    updateInfoPanel(idx);
+    scanframe.classList.add('hidden');
+    scantext.classList.add('hidden');
+    statusBadge.textContent = 'TARGET FOUND';
+    statusBadge.classList.add('found');
+    controls.classList.add('visible');
+    infopanel.classList.add('visible');
+    const m = MONUMENTS[idx];
+    showToast(m ? `${m.name} detected!` : 'Target detected!');
+  });
 
-const sendBtn=document.getElementById("sendBtn")
-const userInput=document.getElementById("userInput")
-const messages=document.getElementById("messages")
+  el.addEventListener('targetLost', () => {
+    isTracking = false;
+    activeTarget = -1;
+    scanframe.classList.remove('hidden');
+    scantext.classList.remove('hidden');
+    statusBadge.textContent = 'SCANNING';
+    statusBadge.classList.remove('found');
+    controls.classList.remove('visible');
+    infopanel.classList.remove('visible');
+  });
+});
 
-sendBtn.onclick=sendMessage
-
-function sendMessage(){
-
-let text=userInput.value.trim()
-
-if(text==="") return
-
-addMessage(text,"user")
-
-let reply=botReply(text.toLowerCase())
-
-setTimeout(()=>{
-addMessage(reply,"bot")
-speak(reply)
-},500)
-
-userInput.value=""
-
+// ── INFO PANEL UPDATE ──
+function updateInfoPanel(idx) {
+  const m = MONUMENTS[idx];
+  if (!m) return;
+  document.getElementById('infoName').textContent    = m.name;
+  document.getElementById('infoTagline').textContent = m.tagline;
+  document.getElementById('infoBuilt').textContent   = m.built;
+  document.getElementById('infoBy').textContent      = m.by;
 }
 
-/* ADD MESSAGE TO CHAT */
-
-function addMessage(text,type){
-
-let div=document.createElement("div")
-
-div.className= type==="user" ? "msgUser" : "msgBot"
-
-div.innerText=text
-
-messages.appendChild(div)
-
-messages.scrollTop=messages.scrollHeight
-
+// ── GET ACTIVE MODEL ──
+function getModel() {
+  if (activeTarget < 0) return null;
+  return document.getElementById('model' + activeTarget);
 }
 
-/* SIMPLE NLP */
-
-function botReply(q){
-
-if(q.includes("who built"))
-return "The Red Fort was built by the Mughal emperor Shah Jahan."
-
-if(q.includes("when built") || q.includes("year"))
-return "The Red Fort was constructed in the year 1648."
-
-if(q.includes("where"))
-return "The Red Fort is located in Delhi India."
-
-if(q.includes("why famous"))
-return "The Red Fort is famous as the residence of Mughal emperors and is a UNESCO World Heritage Site."
-
-if(q.includes("history"))
-return "The Red Fort served as the main residence of Mughal emperors for nearly two hundred years."
-
-return "I am the virtual museum guide. Ask me about the Red Fort history."
-
+// ── TRANSFORM ──
+function updateModelTransform() {
+  const m = getModel();
+  if (!m) return;
+  m.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+  m.setAttribute('rotation', `0 ${currentRotationY} 0`);
 }
 
-/* SPEECH OUTPUT */
+// ── TOUCH: ROTATE (single finger) & PINCH (two finger zoom) ──
+document.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    touchStartX = e.touches[0].clientX;
+  } else if (e.touches.length === 2) {
+    pinchStartDist = getPinchDist(e);
+    pinchStartScale = currentScale;
+  }
+}, { passive: true });
 
-function speak(text){
+document.addEventListener('touchmove', e => {
+  if (!isTracking) return;
 
-let speech=new SpeechSynthesisUtterance(text)
+  if (e.touches.length === 1) {
+    const dx = e.touches[0].clientX - touchStartX;
+    currentRotationY += dx * 0.3;
+    touchStartX = e.touches[0].clientX;
+    const m = getModel();
+    if (m) m.setAttribute('rotation', `0 ${currentRotationY} 0`);
 
-speech.lang="en-US"
+  } else if (e.touches.length === 2) {
+    const dist = getPinchDist(e);
+    const ratio = dist / pinchStartDist;
+    currentScale = Math.min(Math.max(pinchStartScale * ratio, 0.05), 2.0);
+    const m = getModel();
+    if (m) m.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+  }
+}, { passive: true });
 
-window.speechSynthesis.speak(speech)
-
+function getPinchDist(e) {
+  const dx = e.touches[0].clientX - e.touches[1].clientX;
+  const dy = e.touches[0].clientY - e.touches[1].clientY;
+  return Math.hypot(dx, dy);
 }
 
+// ── ZOOM BUTTONS ──
+document.getElementById('zoomIn').addEventListener('click', () => {
+  if (!isTracking) return;
+  currentScale = Math.min(currentScale * 1.2, 2.0);
+  updateModelTransform();
+});
+document.getElementById('zoomOut').addEventListener('click', () => {
+  if (!isTracking) return;
+  currentScale = Math.max(currentScale * 0.83, 0.05);
+  updateModelTransform();
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (!isTracking) return;
+  const idx = activeTarget >= 0 ? activeTarget : 0;
+  currentScale = MONUMENTS[idx]?.defaultScale ?? 0.4;
+  currentRotationY = 0;
+  updateModelTransform();
+});
+
+// ── CHAT TOGGLE ──
+chatToggle.addEventListener('click', () => {
+  chatbox.classList.toggle('open');
+});
+
+// ── SEND MESSAGE ──
+sendBtn.addEventListener('click', sendMessage);
+userInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+
+function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text) return;
+  addMessage(text, 'user');
+  const reply = botReply(text.toLowerCase());
+  setTimeout(() => {
+    addMessage(reply, 'bot');
+    speak(reply);
+  }, 400);
+  userInput.value = '';
+}
+
+function addMessage(text, type) {
+  const div = document.createElement('div');
+  div.className = type === 'user' ? 'msgUser' : 'msgBot';
+  div.innerText = text;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function botReply(q) {
+  // Check active target's QA
+  if (activeTarget >= 0 && MONUMENTS[activeTarget]) {
+    const qa = MONUMENTS[activeTarget].qa;
+    for (const key in qa) {
+      if (q.includes(key)) return qa[key];
+    }
+    // Generic about current monument
+    if (q.includes('what') || q.includes('tell me') || q.includes('about')) {
+      const m = MONUMENTS[activeTarget];
+      return `${m.name} was built by ${m.by} in ${m.built}. ${qa['history'] || ''}`;
+    }
+  }
+  // General fallbacks
+  if (q.includes('hello') || q.includes('hi'))
+    return 'Namaste! 🙏 Point your camera at a monument card to begin exploring!';
+  if (q.includes('help'))
+    return 'Scan an image card to see a 3D model. Rotate it with your finger, pinch to zoom, and ask me anything!';
+  return 'I can answer questions about the monument you are scanning. Try asking about its history, builder, or year!';
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const s = new SpeechSynthesisUtterance(text);
+  s.lang = 'en-IN';
+  s.rate = 0.95;
+  window.speechSynthesis.speak(s);
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── HIDE MINDAR UI (MutationObserver fallback) ──
+const observer = new MutationObserver(() => {
+  document.querySelectorAll('[class*="mindar-ui"], .mindar-ui-overlay, .mindar-ui-scanning').forEach(el => {
+    el.style.display = 'none';
+  });
+});
+observer.observe(document.body, { childList: true, subtree: true });
 </script>
-
 </body>
 </html>
